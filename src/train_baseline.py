@@ -48,7 +48,9 @@ def evaluate_forecast():
 
     os.makedirs("models", exist_ok=True)
     model_path = "models/rf_model.pkl"
-    joblib.dump(rf_model, "models/rf_model.pkl.gz", compress=3)
+    
+    # Save as .pkl with level 3 compression (matches inventory_optimization.py)
+    joblib.dump(rf_model, model_path, compress=3)
     print(f"Model saved successfully to: {model_path}")
     
     rf_preds = rf_model.predict(X_test)
