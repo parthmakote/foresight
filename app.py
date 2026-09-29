@@ -116,53 +116,56 @@ with tab_upload:
     col_u1, col_u2 = st.columns(2)
 
     with col_u1:
-        file_sales = st.file_uploader("1. Sales Log (`sales.csv`)", type=["csv"])
-        file_inventory = st.file_uploader("2. Inventory Snapshot (`inventory.csv`)", type=["csv"])
+        file_sales = st.file_uploader("1. Sales Log (`sales_daily.csv`)", type=["csv"])
+        file_inventory = st.file_uploader("2. Inventory Snapshot (`inventory_snapshots.csv`)", type=["csv"])
 
     with col_u2:
-        file_promo = st.file_uploader("3. Marketing Log (`promotions.csv`)", type=["csv"])
-        file_catalog = st.file_uploader("4. Product Catalog (`product_catalog.csv`)", type=["csv"])
+        file_promo = st.file_uploader("3. Marketing Log (`calendar.csv`)", type=["csv"])
+        file_catalog = st.file_uploader("4. Product Catalog (`sku_master.csv`)", type=["csv"])
 
     st.divider()
 
     if st.button("🚀 Process Data & Run Supply Chain Engine", type="primary"):
         if file_sales and file_inventory and file_promo and file_catalog:
             try:
+                os.makedirs("data", exist_ok=True)
                 os.makedirs("data/raw", exist_ok=True)
 
-                with st.spinner("Step 1/5: Saving raw CSV files to `data/raw/`..."):
-                    with open("data/raw/sales.csv", "wb") as f:
+                with st.spinner("Step 1/4: Saving uploaded CSV files..."):
+                    with open("data/sales_daily.csv", "wb") as f:
                         f.write(file_sales.getbuffer())
-                    with open("data/raw/inventory.csv", "wb") as f:
+                    with open("data/inventory_snapshots.csv", "wb") as f:
                         f.write(file_inventory.getbuffer())
-                    with open("data/raw/promotions.csv", "wb") as f:
+                    with open("data/calendar.csv", "wb") as f:
                         f.write(file_promo.getbuffer())
-                    with open("data/raw/product_catalog.csv", "wb") as f:
+                    with open("data/sku_master.csv", "wb") as f:
                         f.write(file_catalog.getbuffer())
 
-                with st.spinner("Step 2/5: Preprocessing and Merging Raw Data..."):
-                    subprocess.run([sys.executable, "src/preprocess.py"], check=True)
+                with st.spinner("Step 2/4: Running Data Pipeline & Feature Engineering..."):
+                    if os.path.exists("src/pipeline.py"):
+                        subprocess.run([sys.executable, "src/pipeline.py"], check=True)
+                    elif os.path.exists("src/features.py"):
+                        subprocess.run([sys.executable, "src/features.py"], check=True)
 
-                with st.spinner("Step 3/5: Engineering Lags & Moving Average Features..."):
-                    subprocess.run([sys.executable, "src/features.py"], check=True)
+                with st.spinner("Step 3/4: Retraining Machine Learning Model..."):
+                    if os.path.exists("src/train_baseline.py"):
+                        subprocess.run([sys.executable, "src/train_baseline.py"], check=True)
 
-                with st.spinner("Step 4/5: Retraining Random Forest Model & Saving `.pkl`..."):
-                    subprocess.run([sys.executable, "src/train_baseline.py"], check=True)
+                with st.spinner("Step 4/4: Optimizing Inventory & Calculating Reorder Points..."):
+                    if os.path.exists("src/inventory_optimization.py"):
+                        subprocess.run([sys.executable, "src/inventory_optimization.py"], check=True)
 
-                with st.spinner("Step 5/5: Optimizing Safety Stock & Generating Reorder Plan..."):
-                    subprocess.run([sys.executable, "src/inventory_optimization.py"], check=True)
-
-                # Clear Streamlit cache to force fresh data reload
+                # Clear Streamlit cache to force reload of new metrics
                 st.cache_data.clear()
                 st.cache_resource.clear()
 
-                st.success("✅ Engine Pipeline Executed Successfully! Refreshing Dashboard Metrics...")
+                st.success("✅ Engine Pipeline Executed Successfully! Refreshing Dashboard...")
                 st.rerun()
 
             except Exception as e:
                 st.error(f"❌ Pipeline Execution Error: {e}")
         else:
-            st.warning("⚠️ Please upload all 4 required CSV files before starting the pipeline execution.")
+            st.warning("⚠️ Please upload all 4 required CSV files before executing the pipeline.")
 
 # --- If Data is Not Yet Loaded, Show Prompt ---
 if not data_loaded:
